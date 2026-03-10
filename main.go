@@ -20,6 +20,17 @@ const (
 	HTTPS SchemeType = "https"
 )
 
+func (schema SchemeType) GetDefaultPort() int {
+	switch schema {
+	case HTTP:
+		return 80
+	case HTTPS:
+		return 443
+	default:
+		return 80
+	}
+}
+
 type URL struct {
 	Host   string
 	Path   string
@@ -27,28 +38,38 @@ type URL struct {
 	Port   int
 }
 
-func (url *URL) ParseURL(urlStr string) {
-	urlParts := strings.Split(urlStr, "://")
-	if len(urlParts) < 2 {
-		return
+func (url *URL) ParseURL(urlStr string) error {
+	schema, urlStr, found := strings.Cut(urlStr, "://")
+	if !found {
+		return fmt.Errorf("Error '://' not found")
+	}
+	path := ""
+	hostName := ""
+	port := 0
+
+	url.Scheme = SchemeType(schema)
+
+	urlStr, portStr, found := strings.Cut(urlStr, ":")
+
+	if !found {
+		port = url.Scheme.GetDefaultPort()
+		hostName, path, _ = strings.Cut(urlStr, "/")
+	} else {
+		portStr, path, _ = strings.Cut(portStr, "/")
+		parsedPort, err := strconv.Atoi(portStr)
+		if err != nil {
+			return fmt.Errorf("Error parsing the port: %s", err)
+		}
+
+		port = parsedPort
+		hostName = urlStr
 	}
 
-	url.Scheme = SchemeType(urlParts[0])
+	url.Port = port
+	url.Host = hostName
+	url.Path = "/" + path
 
-	switch url.Scheme {
-	case HTTP:
-		url.Port = 80
-	case HTTPS:
-		url.Port = 443
-	default:
-		url.Port = 80
-	}
-
-	urlStr = urlParts[1]
-
-	urlParts = strings.Split(urlStr, "/")
-	url.Host = urlParts[0]
-	url.Path = "/" + strings.Join(urlParts[1:], "/")
+	return nil
 }
 
 func (url *URL) Request() (string, error) {
@@ -169,8 +190,12 @@ func sendRequest() {
 
 	url := URL{}
 
-	url.ParseURL(os.Args[1])
+	if err := url.ParseURL(os.Args[1]); err != nil {
+		fmt.Print(err)
+		return
+	}
 	fmt.Printf("Parsed url: %v\n\n", url)
+
 	fmt.Printf("------------Response------------\n")
 
 	content, err := url.Request()
