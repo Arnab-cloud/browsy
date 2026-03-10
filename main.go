@@ -7,7 +7,10 @@ import (
 	"log"
 	"net"
 	"os"
+	"strconv"
 	"strings"
+
+	"crypto/tls"
 )
 
 type SchemeType string
@@ -30,27 +33,44 @@ func (url *URL) ParseURL(urlStr string) {
 		return
 	}
 
-	if !strings.Contains(urlStr, "/") {
-		urlStr += "/"
+	url.Scheme = SchemeType(urlParts[0])
+
+	switch url.Scheme {
+	case HTTP:
+		url.Port = 80
+	case HTTPS:
+		url.Port = 443
+	default:
+		url.Port = 80
 	}
 
-	url.Scheme = SchemeType(urlParts[0])
 	urlStr = urlParts[1]
 
 	urlParts = strings.Split(urlStr, "/")
 	url.Host = urlParts[0]
-	url.Path = strings.Join(urlParts[1:], "/") + "/"
-	url.Port = 80
+	url.Path = "/" + strings.Join(urlParts[1:], "/")
 }
 
 func (url *URL) Request() (string, error) {
-	conn, err := net.Dial("tcp", net.JoinHostPort(url.Host, fmt.Sprintf("%d", url.Port)))
+	conn, err := net.Dial("tcp", net.JoinHostPort(url.Host, strconv.Itoa(url.Port)))
 
 	if err != nil {
 		return "", fmt.Errorf("Error dialing a connection: %s", err)
 	}
 
 	defer conn.Close()
+
+	if url.Scheme == HTTPS {
+		secureConn := tls.Client(conn, &tls.Config{
+			ServerName: url.Host,
+		})
+
+		if err = secureConn.Handshake(); err != nil {
+			return "", fmt.Errorf("Error in the handshake: %s", err)
+		}
+
+		conn = secureConn
+	}
 
 	request := fmt.Sprintf("GET %s HTTP/1.0\r\n", url.Path)
 	request += fmt.Sprintf("Host: %s\r\n", url.Host)
@@ -69,7 +89,7 @@ func (url *URL) Request() (string, error) {
 		return "", fmt.Errorf("Error reading the status line: %s", err)
 	}
 
-	statusInfo := strings.Split(string(statusLine), " ")
+	statusInfo := strings.SplitN(string(statusLine), " ", 3)
 	if len(statusInfo) < 3 {
 		return "", fmt.Errorf("Invalid status info")
 	}
@@ -92,9 +112,12 @@ func (url *URL) Request() (string, error) {
 		if line == "\r\n" {
 			break
 		}
-		header, value, found := strings.Cut(line, ": ")
+
+		header, value, found := strings.Cut(line, ":")
 		if found {
-			responseHeaders[header] = strings.Trim(value, "\r\n")
+			header = strings.ToLower(header)
+			value = strings.TrimSpace(value)
+			responseHeaders[header] = value
 			fmt.Printf("%s:%s\n", header, responseHeaders[header])
 			continue
 		}
@@ -102,24 +125,44 @@ func (url *URL) Request() (string, error) {
 		fmt.Printf("%s\n", line)
 	}
 
-	if _, exists := responseHeaders["Transfer-Encoding"]; exists {
-		return "", fmt.Errorf("'Transfer-Encoding' is Present")
+	if _, exists := responseHeaders["transfer-encoding"]; exists {
+		return "", fmt.Errorf("'transfer-encoding' is Present")
 	}
 
-	if _, exists := responseHeaders["Content-Encoding"]; exists {
-		return "", fmt.Errorf("'Content-Encoding' is Present")
+	if _, exists := responseHeaders["content-encoding"]; exists {
+		return "", fmt.Errorf("'content-encoding' is Present")
 	}
 
-	content, err := reader.ReadBytes('\n')
+	if contentLenStr, exists := responseHeaders["content-length"]; exists {
+		contenLength, err := strconv.Atoi(contentLenStr)
+		if err == nil {
+			return readWithContentLength(reader, contenLength)
+		}
+	}
+
+	return readContent(reader)
+
+}
+
+func readWithContentLength(reader io.Reader, contentLength int) (string, error) {
+	content := make([]byte, contentLength)
+	_, err := io.ReadFull(reader, content)
+	if err != nil {
+		return "", fmt.Errorf("Error reading with content-length: %s", err)
+	}
+	return string(content), nil
+}
+
+func readContent(reader io.Reader) (string, error) {
+	content, err := io.ReadAll(reader)
 	if err != nil {
 		return "", fmt.Errorf("Error reading the content: %s", err)
 	}
 
 	return string(content), nil
-
 }
 
-func main() {
+func sendRequest() {
 	if len(os.Args) < 2 {
 		log.Fatalf("Provide a URL\n")
 	}
@@ -136,4 +179,28 @@ func main() {
 	}
 
 	fmt.Printf("HTML:\n%s\n", content)
+}
+
+func parseHTMLTag(content string) {
+	inTag := false
+	for _, ch := range content {
+		switch ch {
+		case '<':
+			inTag = true
+		case '>':
+			inTag = false
+		default:
+			if !inTag {
+				fmt.Printf("%c", ch)
+			}
+		}
+	}
+}
+
+func main() {
+	sendRequest()
+
+	// content := "<!doctype html><html lang=\"en\">	<head>		<title>Example Domain</title>		<meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">		<style>			body {			background:#eee;width:60vw;margin:15vh auto;font-family:system-ui,sans-serif}h1{font-size:1.5em}div{opacity:0.8}a:link,a:visited{color:#348}		</style>	</head>	<body><div><h1>Example Domain</h1><p>This domain is for use in documentation examples without needing permission. Avoid use in operations.</p><p><a href=\"https://iana.org/domains/example\">Learn more</a></p></div>	</body></html>"
+
+	// parseHTMLTag(content)
 }
