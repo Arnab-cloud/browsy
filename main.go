@@ -72,7 +72,7 @@ func (url *URL) ParseURL(urlStr string) error {
 	return nil
 }
 
-func (url *URL) Request() (string, error) {
+func (url *URL) Request(headers *map[string]string) (string, error) {
 	conn, err := net.Dial("tcp", net.JoinHostPort(url.Host, strconv.Itoa(url.Port)))
 
 	if err != nil {
@@ -93,9 +93,21 @@ func (url *URL) Request() (string, error) {
 		conn = secureConn
 	}
 
-	request := fmt.Sprintf("GET %s HTTP/1.0\r\n", url.Path)
+	request := fmt.Sprintf("GET %s HTTP/1.1\r\n", url.Path)
 	request += fmt.Sprintf("Host: %s\r\n", url.Host)
+	request += "Connection: close\r\n"
+	request += "User-Agent: browsy\r\n"
+
+	if headers != nil {
+		for header, value := range *headers {
+			request += fmt.Sprintf("%s: %s\r\n", header, value)
+		}
+	}
+
 	request += "\r\n"
+
+	fmt.Println("------------Request------------")
+	fmt.Println(request)
 
 	if _, err = conn.Write([]byte(request)); err != nil {
 		return "", fmt.Errorf("Erorr writing bytes: %s", err)
@@ -105,6 +117,7 @@ func (url *URL) Request() (string, error) {
 
 	reader := bufio.NewReader(conn)
 
+	fmt.Println("------------Response------------")
 	statusLine, err := reader.ReadBytes('\n')
 	if err != nil {
 		return "", fmt.Errorf("Error reading the status line: %s", err)
@@ -196,9 +209,7 @@ func sendRequest() {
 	}
 	fmt.Printf("Parsed url: %v\n\n", url)
 
-	fmt.Printf("------------Response------------\n")
-
-	content, err := url.Request()
+	content, err := url.Request(nil)
 	if err != nil {
 		log.Fatalf("Erorr: %s\n", err)
 	}
