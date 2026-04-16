@@ -7,17 +7,17 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/Arnab-cloud/browsy/url"
+	"github.com/Arnab-cloud/browsy/request"
 )
 
 func runURL(t *testing.T, input string) {
-	u := url.URL{}
+	req, err := request.GetRequest(input, nil, nil)
 
-	if err := u.Parse(input); err != nil {
+	if err != nil {
 		t.Fatalf("parse failed for %s: %v", input, err)
 	}
 
-	content, err := u.Request(nil)
+	content, err := req.Request()
 	if err != nil {
 		t.Fatalf("request failed for %s: %v", input, err)
 	}
@@ -52,13 +52,13 @@ func TestHTTP_LocalFileServer(t *testing.T) {
 	server := httptest.NewServer(fs)
 	defer server.Close()
 
-	u := url.URL{}
+	req, err := request.GetRequest(server.URL, nil, nil)
 
-	if err := u.Parse(server.URL); err != nil {
+	if err != nil {
 		t.Fatalf("parse failed: %v", err)
 	}
 
-	content, err := u.Request(nil)
+	content, err := req.Request()
 	if err != nil {
 		t.Fatalf("request failed: %v", err)
 	}

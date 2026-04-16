@@ -1,4 +1,4 @@
-package url
+package request
 
 import (
 	"bufio"
@@ -10,19 +10,49 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
+
+	"github.com/Arnab-cloud/browsy/url"
 )
 
-func (url *URL) Request(headers *map[string]string) (string, error) {
+type Request struct {
+	Url               *url.URL
+	headers           *map[string]string
+	max_num_redirects *int
+}
 
-	if url.Scheme == DATA {
-		return url.dataRequest()
+func GetRequest(urlStr string, headers *map[string]string, max_num_redirects *int) (*Request, error) {
+	req := &Request{}
+	err := req.Parse(urlStr, headers, max_num_redirects)
+	return req, err
+}
+
+func (req *Request) Parse(urlStr string, headers *map[string]string, max_num_redirects *int) error {
+	req.Url = &url.URL{}
+	if err := req.Url.Parse(urlStr); err != nil {
+		return err
 	}
 
-	if url.Scheme == FILE {
-		return url.fileRequest()
+	req.headers = headers
+	req.max_num_redirects = max_num_redirects
+
+	return nil
+}
+
+func (req *Request) Do() (string, error) {
+	return req.Request()
+}
+
+func (req *Request) Request() (string, error) {
+
+	if req.Url.Scheme == url.DATA {
+		return req.dataRequest()
 	}
 
-	conn, err := net.Dial("tcp", net.JoinHostPort(url.Host, strconv.Itoa(url.Port)))
+	if req.Url.Scheme == url.FILE {
+		return req.fileRequest()
+	}
+
+	conn, err := net.Dial("tcp", net.JoinHostPort(req.Url.Host, strconv.Itoa(req.Url.Port)))
 
 	if err != nil {
 		return "", fmt.Errorf("Error dialing a connection: %s", err)
@@ -30,9 +60,9 @@ func (url *URL) Request(headers *map[string]string) (string, error) {
 
 	defer conn.Close()
 
-	if url.Scheme == HTTPS {
+	if req.Url.Scheme == url.HTTPS {
 		secureConn := tls.Client(conn, &tls.Config{
-			ServerName: url.Host,
+			ServerName: req.Url.Host,
 		})
 
 		if err = secureConn.Handshake(); err != nil {
@@ -42,13 +72,13 @@ func (url *URL) Request(headers *map[string]string) (string, error) {
 		conn = secureConn
 	}
 
-	request := fmt.Sprintf("GET %s HTTP/1.1\r\n", url.Path)
-	request += fmt.Sprintf("Host: %s\r\n", url.Host)
+	request := fmt.Sprintf("GET %s HTTP/1.1\r\n", req.Url.Path)
+	request += fmt.Sprintf("Host: %s\r\n", req.Url.Host)
 	request += "Connection: close\r\n"
 	request += "User-Agent: browsy\r\n"
 
-	if headers != nil {
-		for header, value := range *headers {
+	if req.headers != nil {
+		for header, value := range *req.headers {
 			request += fmt.Sprintf("%s: %s\r\n", header, value)
 		}
 	}
@@ -145,21 +175,21 @@ func readContent(reader io.Reader) (string, error) {
 	return formatOutput(string(content)), nil
 }
 
-func (url *URL) fileRequest() (string, error) {
-	info, err := os.Stat(url.Path)
+func (req *Request) fileRequest() (string, error) {
+	info, err := os.Stat(req.Url.Path)
 	if err != nil {
 		return "", fmt.Errorf("Error parsing the path: %s", err)
 	}
 	if info.IsDir() {
-		contents, err := os.ReadDir(url.Path)
+		contents, err := os.ReadDir(req.Url.Path)
 		return fmt.Sprintf("%v", contents), err
 	}
 
 	return fmt.Sprintf("%v", info), nil
 }
 
-func (url *URL) dataRequest() (string, error) {
-	content := url.Path
+func (req *Request) dataRequest() (string, error) {
+	content := req.Url.Path
 	metadata, data, found := strings.Cut(content, ",")
 	if !found {
 		return "", fmt.Errorf("no data provided")

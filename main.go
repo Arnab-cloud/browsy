@@ -5,7 +5,7 @@ import (
 	"log"
 	"os"
 
-	"github.com/Arnab-cloud/browsy/url"
+	"github.com/Arnab-cloud/browsy/request"
 )
 
 func sendRequest() {
@@ -13,15 +13,21 @@ func sendRequest() {
 		log.Fatalf("Provide a URL\n")
 	}
 
-	url := url.URL{}
+	req, err := request.GetRequest(os.Args[1], nil, nil)
+	// url := url.URL{}
 
-	if err := url.Parse(os.Args[1]); err != nil {
+	// if err := req.Url.Parse(os.Args[1]); err != nil {
+	// 	fmt.Print(err)
+	// 	return
+	// }
+
+	if err != nil {
 		fmt.Print(err)
 		return
 	}
-	fmt.Printf("Parsed url: %v\n\n", url)
+	fmt.Printf("Parsed url: %v\n\n", req.Url)
 
-	content, err := url.Request(nil)
+	content, err := req.Do()
 	if err != nil {
 		log.Fatalf("Erorr: %s\n", err)
 	}
