@@ -34,7 +34,7 @@ func TestHTTP(t *testing.T) {
 		t.Skip("skipping HTTP test in short mode")
 	}
 
-	runURL(t, "http://example.com")
+	runURL(t, "http://example.org")
 }
 
 func TestHTTPS(t *testing.T) {
@@ -42,7 +42,7 @@ func TestHTTPS(t *testing.T) {
 		t.Skip("skipping HTTPS test in short mode")
 	}
 
-	runURL(t, "https://example.com")
+	runURL(t, "https://example.org")
 }
 
 func TestHTTP_LocalFileServer(t *testing.T) {

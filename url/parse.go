@@ -48,6 +48,9 @@ func (url *URL) parseHTTPPath() error {
 	if !portFound {
 		url.Port = url.Scheme.GetDefaultPort()
 		url.Host, url.Path, _ = strings.Cut(urlStr, "/")
+		if url.Path == "" {
+			url.Path = "/"
+		}
 		return nil
 	}
 
