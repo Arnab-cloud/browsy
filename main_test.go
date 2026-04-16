@@ -1,6 +1,8 @@
 package main
 
 import (
+	"net/http"
+	"net/http/httptest"
 	"os"
 	"strings"
 	"testing"
@@ -39,6 +41,29 @@ func TestHTTPS(t *testing.T) {
 	}
 
 	runURL(t, "https://example.com")
+}
+
+func TestHTTP_LocalFileServer(t *testing.T) {
+	// serve files from testdata/
+	fs := http.FileServer(http.Dir("testdata"))
+
+	server := httptest.NewServer(fs)
+	defer server.Close()
+
+	u := url.URL{}
+
+	if err := u.Parse(server.URL); err != nil {
+		t.Fatalf("parse failed: %v", err)
+	}
+
+	content, err := u.Request(nil)
+	if err != nil {
+		t.Fatalf("request failed: %v", err)
+	}
+
+	if !strings.Contains(content, "<html>") {
+		t.Errorf("invalid HTML response")
+	}
 }
 
 func TestFile(t *testing.T) {
