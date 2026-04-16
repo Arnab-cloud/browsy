@@ -32,18 +32,20 @@ func (req *Request) Parse(urlStr string, headers *map[string]string, max_num_red
 		return err
 	}
 
+	if headers == nil {
+		headers = &map[string]string{}
+	}
+	(*headers)["Host"] = req.Url.Host
+	(*headers)["User-Agent"] = "browsy"
+	(*headers)["Connection"] = "close"
+
 	req.headers = headers
 	req.max_num_redirects = max_num_redirects
 
 	return nil
 }
 
-// func (req *Request) Do() (string, error) {
-// 	return req.Request()
-// }
-
 func (req *Request) Do() (string, error) {
-
 	if req.Url.Scheme == url.DATA {
 		return req.dataRequest()
 	}
@@ -73,9 +75,6 @@ func (req *Request) Do() (string, error) {
 	}
 
 	request := fmt.Sprintf("GET %s HTTP/1.1\r\n", req.Url.Path)
-	request += fmt.Sprintf("Host: %s\r\n", req.Url.Host)
-	request += "Connection: close\r\n"
-	request += "User-Agent: browsy\r\n"
 
 	if req.headers != nil {
 		for header, value := range *req.headers {
