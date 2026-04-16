@@ -68,31 +68,44 @@ func (url *URL) Parse(urlStr string) error {
 
 	urlStr = strings.Trim(urlStr, "\"")
 
-	schemeStr, urlStr, schemeFound := strings.Cut(urlStr, "://")
-	if !schemeFound {
-		fmt.Println("INFO: '://' not found")
-		fmt.Println("parsing the file as file path")
-
-		url.setFilePath(schemeStr)
-		return nil
+	if err := url.parseScheme(urlStr); err != nil {
+		return err
 	}
 
-	scheme := SchemeType(schemeStr)
+	if err := url.validatePathAndScheme(); err != nil {
+		return err
+	}
+
+	// schemeStr, urlStr, schemeFound := strings.Cut(urlStr, "://")
+	// if !schemeFound {
+	// 	fmt.Println("INFO: '://' not found")
+	// 	fmt.Println("parsing the file as file path")
+
+	// 	url.setFilePath(schemeStr)
+	// 	return nil
+	// }
+
+	scheme := SchemeType(url.Scheme)
 	path := ""
 	hostName := ""
 	port := 0
 
-	if scheme == DATA {
-		url.setDataPath(urlStr)
+	if scheme == DATA || scheme == FILE {
 		return nil
 	}
 
-	if scheme == FILE {
-		url.setFilePath(urlStr)
-		return nil
-	}
+	// if scheme == DATA {
+	// 	url.setDataPath(urlStr)
+	// 	return nil
+	// }
 
-	urlStr, portStr, portFound := strings.Cut(urlStr, ":")
+	// if scheme == FILE {
+	// 	url.setFilePath(urlStr)
+	// 	return nil
+	// }
+
+	// urlStr, portStr, portFound := strings.Cut(urlStr, ":")
+	urlStr, portStr, portFound := strings.Cut(url.Path, ":")
 
 	if !portFound {
 		port = scheme.GetDefaultPort()
@@ -113,6 +126,37 @@ func (url *URL) Parse(urlStr string) error {
 	url.Host = hostName
 	url.Path = "/" + path
 
+	return nil
+}
+
+// The url.Path is parsed, extra
+func (url *URL) validatePathAndScheme() error {
+	switch url.Scheme {
+	case HTTP, HTTPS, FILE:
+		cleanedPath, found := strings.CutPrefix(url.Path, "//")
+		if !found {
+			return fmt.Errorf("invalid path: %s", url.Path)
+		}
+		cleanedPath = strings.TrimLeft(cleanedPath, "/")
+		if url.Scheme == FILE {
+			cleanedPath = filepath.Clean(cleanedPath)
+		}
+		url.Path = cleanedPath
+		return nil
+	case DATA:
+		return nil
+	default:
+		return fmt.Errorf("scheme not supported")
+	}
+}
+
+func (url *URL) parseScheme(urlStr string) error {
+	schemePart, path, schemeFound := strings.Cut(urlStr, ":")
+	if !schemeFound {
+		return fmt.Errorf("scheme not found")
+	}
+	url.Scheme = SchemeType(schemePart)
+	url.Path = path
 	return nil
 }
 
