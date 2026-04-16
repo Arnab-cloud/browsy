@@ -17,7 +17,7 @@ func runURL(t *testing.T, input string) {
 		t.Fatalf("parse failed for %s: %v", input, err)
 	}
 
-	content, err := req.Request()
+	content, err := req.Do()
 	if err != nil {
 		t.Fatalf("request failed for %s: %v", input, err)
 	}
@@ -58,7 +58,7 @@ func TestHTTP_LocalFileServer(t *testing.T) {
 		t.Fatalf("parse failed: %v", err)
 	}
 
-	content, err := req.Request()
+	content, err := req.Do()
 	if err != nil {
 		t.Fatalf("request failed: %v", err)
 	}

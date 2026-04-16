@@ -14,12 +14,6 @@ func sendRequest() {
 	}
 
 	req, err := request.GetRequest(os.Args[1], nil, nil)
-	// url := url.URL{}
-
-	// if err := req.Url.Parse(os.Args[1]); err != nil {
-	// 	fmt.Print(err)
-	// 	return
-	// }
 
 	if err != nil {
 		fmt.Print(err)

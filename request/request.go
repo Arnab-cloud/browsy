@@ -38,11 +38,11 @@ func (req *Request) Parse(urlStr string, headers *map[string]string, max_num_red
 	return nil
 }
 
-func (req *Request) Do() (string, error) {
-	return req.Request()
-}
+// func (req *Request) Do() (string, error) {
+// 	return req.Request()
+// }
 
-func (req *Request) Request() (string, error) {
+func (req *Request) Do() (string, error) {
 
 	if req.Url.Scheme == url.DATA {
 		return req.dataRequest()
