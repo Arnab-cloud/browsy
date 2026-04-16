@@ -54,6 +54,8 @@ func TestFile(t *testing.T) {
 	tmpFile.Close()
 
 	runURL(t, "file://"+tmpFile.Name())
+	runURL(t, "file:///"+tmpFile.Name())
+	runURL(t, "file:////"+tmpFile.Name())
 }
 
 func TestData(t *testing.T) {
