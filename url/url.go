@@ -76,39 +76,23 @@ func (url *URL) Parse(urlStr string) error {
 		return err
 	}
 
-	// schemeStr, urlStr, schemeFound := strings.Cut(urlStr, "://")
-	// if !schemeFound {
-	// 	fmt.Println("INFO: '://' not found")
-	// 	fmt.Println("parsing the file as file path")
+	if url.Scheme == DATA || url.Scheme == FILE {
+		return nil
+	}
 
-	// 	url.setFilePath(schemeStr)
-	// 	return nil
-	// }
+	return url.parseHTTPPath()
+}
 
-	scheme := SchemeType(url.Scheme)
+func (url *URL) parseHTTPPath() error {
+
 	path := ""
 	hostName := ""
 	port := 0
 
-	if scheme == DATA || scheme == FILE {
-		return nil
-	}
-
-	// if scheme == DATA {
-	// 	url.setDataPath(urlStr)
-	// 	return nil
-	// }
-
-	// if scheme == FILE {
-	// 	url.setFilePath(urlStr)
-	// 	return nil
-	// }
-
-	// urlStr, portStr, portFound := strings.Cut(urlStr, ":")
 	urlStr, portStr, portFound := strings.Cut(url.Path, ":")
 
 	if !portFound {
-		port = scheme.GetDefaultPort()
+		port = url.Scheme.GetDefaultPort()
 		hostName, path, _ = strings.Cut(urlStr, "/")
 	} else {
 		portStr, path, _ = strings.Cut(portStr, "/")
@@ -121,7 +105,6 @@ func (url *URL) Parse(urlStr string) error {
 		hostName = urlStr
 	}
 
-	url.Scheme = scheme
 	url.Port = port
 	url.Host = hostName
 	url.Path = "/" + path
