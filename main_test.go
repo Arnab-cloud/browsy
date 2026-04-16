@@ -25,6 +25,8 @@ func runURL(t *testing.T, input string) {
 	if len(strings.TrimSpace(content)) == 0 {
 		t.Errorf("empty content for %s", input)
 	}
+
+	t.Log(content)
 }
 
 func TestHTTP(t *testing.T) {
@@ -64,6 +66,8 @@ func TestHTTP_LocalFileServer(t *testing.T) {
 	if !strings.Contains(content, "<html>") {
 		t.Errorf("invalid HTML response")
 	}
+
+	t.Log(content)
 }
 
 func TestFile(t *testing.T) {

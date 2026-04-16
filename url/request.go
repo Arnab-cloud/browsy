@@ -7,6 +7,7 @@ import (
 	"io"
 	"net"
 	"os"
+	"regexp"
 	"strconv"
 	"strings"
 )
@@ -132,7 +133,7 @@ func readWithContentLength(reader io.Reader, contentLength int) (string, error) 
 	if err != nil {
 		return "", fmt.Errorf("Error reading with content-length: %s", err)
 	}
-	return string(content), nil
+	return formatOutput(string(content)), nil
 }
 
 func readContent(reader io.Reader) (string, error) {
@@ -141,7 +142,7 @@ func readContent(reader io.Reader) (string, error) {
 		return "", fmt.Errorf("Error reading the content: %s", err)
 	}
 
-	return string(content), nil
+	return formatOutput(string(content)), nil
 }
 
 func (url *URL) fileRequest() (string, error) {
@@ -169,4 +170,11 @@ func (url *URL) dataRequest() (string, error) {
 	}
 
 	return data, nil
+}
+
+var lt *regexp.Regexp = regexp.MustCompile("&lt;")
+var gt *regexp.Regexp = regexp.MustCompile("&gt;")
+
+func formatOutput(content string) string {
+	return gt.ReplaceAllString(lt.ReplaceAllString(content, "<"), ">")
 }
