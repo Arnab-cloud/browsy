@@ -5,7 +5,7 @@ import (
 	"log"
 	"os"
 
-	"github.com/Arnab-cloud/browsy/request"
+	"github.com/Arnab-cloud/browsy/ntwk"
 )
 
 func sendRequest() {
@@ -13,7 +13,8 @@ func sendRequest() {
 		log.Fatalf("Provide a URL\n")
 	}
 
-	req, err := request.GetRequest(os.Args[1], nil, nil)
+	redirects := 10
+	req, err := ntwk.GetRequest(os.Args[1], nil, &redirects)
 
 	if err != nil {
 		fmt.Print(err)
@@ -21,7 +22,7 @@ func sendRequest() {
 	}
 	fmt.Printf("Parsed url: %v\n\n", req.Url)
 
-	content, err := req.Do()
+	content, err := req.Do1()
 	if err != nil {
 		log.Fatalf("Erorr: %s\n", err)
 	}

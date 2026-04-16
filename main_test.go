@@ -7,17 +7,17 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/Arnab-cloud/browsy/request"
+	"github.com/Arnab-cloud/browsy/ntwk"
 )
 
-func runURL(t *testing.T, input string) {
-	req, err := request.GetRequest(input, nil, nil)
+func runURL(t *testing.T, input string, num_redirects int) string {
+	req, err := ntwk.GetRequest(input, nil, &num_redirects)
 
 	if err != nil {
 		t.Fatalf("parse failed for %s: %v", input, err)
 	}
 
-	content, err := req.Do()
+	content, err := req.Do1()
 	if err != nil {
 		t.Fatalf("request failed for %s: %v", input, err)
 	}
@@ -27,6 +27,7 @@ func runURL(t *testing.T, input string) {
 	}
 
 	t.Log(content)
+	return content
 }
 
 func TestHTTP(t *testing.T) {
@@ -34,7 +35,7 @@ func TestHTTP(t *testing.T) {
 		t.Skip("skipping HTTP test in short mode")
 	}
 
-	runURL(t, "http://example.org")
+	runURL(t, "http://example.org", 0)
 }
 
 func TestHTTPS(t *testing.T) {
@@ -42,7 +43,16 @@ func TestHTTPS(t *testing.T) {
 		t.Skip("skipping HTTPS test in short mode")
 	}
 
-	runURL(t, "https://example.org")
+	runURL(t, "https://example.org", 0)
+}
+
+func TestHTTP_Redirect(t *testing.T) {
+
+	if testing.Short() {
+		t.Skip("skipping HTTPS test in short mode")
+	}
+
+	runURL(t, "http://browser.engineering/redirect3", 3)
 }
 
 func TestHTTP_LocalFileServer(t *testing.T) {
@@ -52,16 +62,7 @@ func TestHTTP_LocalFileServer(t *testing.T) {
 	server := httptest.NewServer(fs)
 	defer server.Close()
 
-	req, err := request.GetRequest(server.URL, nil, nil)
-
-	if err != nil {
-		t.Fatalf("parse failed: %v", err)
-	}
-
-	content, err := req.Do()
-	if err != nil {
-		t.Fatalf("request failed: %v", err)
-	}
+	content := runURL(t, server.URL, 0)
 
 	if !strings.Contains(content, "<html>") {
 		t.Errorf("invalid HTML response")
@@ -82,11 +83,11 @@ func TestFile(t *testing.T) {
 	tmpFile.WriteString(content)
 	tmpFile.Close()
 
-	runURL(t, "file://"+tmpFile.Name())
-	runURL(t, "file:///"+tmpFile.Name())
-	runURL(t, "file:////"+tmpFile.Name())
+	runURL(t, "file://"+tmpFile.Name(), 0)
+	runURL(t, "file:///"+tmpFile.Name(), 0)
+	runURL(t, "file:////"+tmpFile.Name(), 0)
 }
 
 func TestData(t *testing.T) {
-	runURL(t, "data:text/plain,HelloWorld")
+	runURL(t, "data:text/plain,HelloWorld", 0)
 }

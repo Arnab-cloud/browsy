@@ -1,4 +1,4 @@
-package url
+package ntwk
 
 type SchemeType string
 
