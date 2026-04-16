@@ -7,6 +7,7 @@ import (
 	"log"
 	"net"
 	"os"
+	"path/filepath"
 	"strconv"
 	"strings"
 
@@ -18,6 +19,8 @@ type SchemeType string
 const (
 	HTTP  SchemeType = "http"
 	HTTPS SchemeType = "https"
+	File  SchemeType = "file"
+	data  SchemeType = "data"
 )
 
 func (schema SchemeType) GetDefaultPort() int {
@@ -26,6 +29,10 @@ func (schema SchemeType) GetDefaultPort() int {
 		return 80
 	case HTTPS:
 		return 443
+	case File:
+		return 0
+	case data:
+		return 0
 	default:
 		return 80
 	}
@@ -38,21 +45,54 @@ type URL struct {
 	Port   int
 }
 
+// func extractScheme(url *string) (SchemeType, error) {
+
+// }
+
+// urlStr is the url string to be parsed.
+// schemes accepted are HTTP, HTTPS & File
+//
+// For HTTPS & HTTPS, after successfully parsing the URL.Scheme, URL.Host will be set as ususal.
+// URL.Port = 80 for HTTP, and URL.Port = 443 for HTTPS
+// IF Custom port is porvided that will be used instead of default port.
+// URL.Path will be set to the path after the port (is exists).
+//
+// For File scheme, URL.Host will be localhost
+// URL.Path will be the directory or file path as provided in urlStr
+// URL.Port will be 0 and ignored
+// URL.Scheme will be File.
+// eg.. file:///path/to/file
+// here the path will be /path/to/file .
+//
+// File urls with with hostname are not accecpted.
+// eg.. file:///localhost/path/to/file will result unexpected behaviour
 func (url *URL) ParseURL(urlStr string) error {
-	schema, urlStr, found := strings.Cut(urlStr, "://")
-	if !found {
-		return fmt.Errorf("Error '://' not found")
+
+	urlStr = strings.Trim(urlStr, "\"")
+
+	schemeStr, urlStr, schemeFound := strings.Cut(urlStr, "://")
+	if !schemeFound {
+		fmt.Println("INFO: '://' not found")
+		fmt.Println("parsing the file as file path")
+
+		url.SetFilePath(schemeStr)
+		return nil
 	}
+
+	scheme := SchemeType(schemeStr)
 	path := ""
 	hostName := ""
 	port := 0
 
-	url.Scheme = SchemeType(schema)
+	if scheme == File {
+		url.SetFilePath(urlStr)
+		return nil
+	}
 
-	urlStr, portStr, found := strings.Cut(urlStr, ":")
+	urlStr, portStr, portFound := strings.Cut(urlStr, ":")
 
-	if !found {
-		port = url.Scheme.GetDefaultPort()
+	if !portFound {
+		port = scheme.GetDefaultPort()
 		hostName, path, _ = strings.Cut(urlStr, "/")
 	} else {
 		portStr, path, _ = strings.Cut(portStr, "/")
@@ -65,6 +105,7 @@ func (url *URL) ParseURL(urlStr string) error {
 		hostName = urlStr
 	}
 
+	url.Scheme = scheme
 	url.Port = port
 	url.Host = hostName
 	url.Path = "/" + path
@@ -72,7 +113,36 @@ func (url *URL) ParseURL(urlStr string) error {
 	return nil
 }
 
+func (url *URL) SetFilePath(path string) {
+	url.Scheme = File
+	if path[0] == '/' {
+		url.Path = filepath.Clean(path[1:])
+	} else {
+		url.Path = filepath.Clean(path)
+	}
+	url.Host = "localhost"
+	url.Port = 0
+}
+
+func (url *URL) FileRequest() (string, error) {
+	info, err := os.Stat(url.Path)
+	if err != nil {
+		return "", fmt.Errorf("Error parsing the path: %s", err)
+	}
+	if info.IsDir() {
+		contents, err := os.ReadDir(url.Path)
+		return fmt.Sprintf("%v", contents), err
+	}
+
+	return fmt.Sprintf("%v", info), nil
+}
+
 func (url *URL) Request(headers *map[string]string) (string, error) {
+
+	if url.Scheme == File {
+		return url.FileRequest()
+	}
+
 	conn, err := net.Dial("tcp", net.JoinHostPort(url.Host, strconv.Itoa(url.Port)))
 
 	if err != nil {
