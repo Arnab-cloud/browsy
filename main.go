@@ -5,7 +5,7 @@ import (
 	"log"
 	"os"
 
-	url "github.com/Arnab-cloud/browsy/url"
+	"github.com/Arnab-cloud/browsy/url"
 )
 
 func sendRequest() {
