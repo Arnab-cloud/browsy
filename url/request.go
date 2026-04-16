@@ -11,29 +11,6 @@ import (
 	"strings"
 )
 
-func (url *URL) dataRequest() (string, error) {
-	content := url.Path
-	dataParts := strings.Split(content, ",")
-	if len(dataParts) == 0 {
-		return "", fmt.Errorf("no data provided")
-	}
-
-	return "", nil
-}
-
-func (url *URL) fileRequest() (string, error) {
-	info, err := os.Stat(url.Path)
-	if err != nil {
-		return "", fmt.Errorf("Error parsing the path: %s", err)
-	}
-	if info.IsDir() {
-		contents, err := os.ReadDir(url.Path)
-		return fmt.Sprintf("%v", contents), err
-	}
-
-	return fmt.Sprintf("%v", info), nil
-}
-
 func (url *URL) Request(headers *map[string]string) (string, error) {
 
 	if url.Scheme == DATA {
@@ -165,4 +142,31 @@ func readContent(reader io.Reader) (string, error) {
 	}
 
 	return string(content), nil
+}
+
+func (url *URL) fileRequest() (string, error) {
+	info, err := os.Stat(url.Path)
+	if err != nil {
+		return "", fmt.Errorf("Error parsing the path: %s", err)
+	}
+	if info.IsDir() {
+		contents, err := os.ReadDir(url.Path)
+		return fmt.Sprintf("%v", contents), err
+	}
+
+	return fmt.Sprintf("%v", info), nil
+}
+
+func (url *URL) dataRequest() (string, error) {
+	content := url.Path
+	metadata, data, found := strings.Cut(content, ",")
+	if !found {
+		return "", fmt.Errorf("no data provided")
+	}
+
+	if metadata != "" {
+
+	}
+
+	return data, nil
 }
